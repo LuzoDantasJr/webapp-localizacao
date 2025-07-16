@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Monitoramento de Área">
   <link rel="apple-touch-icon" href="icon-192.png">
-
+  
   <!-- Manifesto e tema -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#ffffff">
@@ -126,6 +126,8 @@
       }
     }
 
+    let locationMarker = null;
+
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const preview = location.hostname === "localhost" || location.hostname === "127.0.0.1";
 
@@ -141,6 +143,18 @@
         position => {
           const latlng = L.latLng(position.coords.latitude, position.coords.longitude);
           map.setView(latlng);
+
+          if (!locationMarker) {
+            locationMarker = L.marker(latlng, { icon: L.icon({
+              iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+              iconSize: [25, 41],
+              iconAnchor: [12, 41],
+              popupAnchor: [1, -34]
+            }) }).addTo(map);
+          } else {
+            locationMarker.setLatLng(latlng);
+          }
+
           updateStatusAndMarker(latlng);
         },
         error => {
