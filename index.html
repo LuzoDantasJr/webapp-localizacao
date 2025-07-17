@@ -140,9 +140,17 @@
           updateStatus(e.target.getLatLng());
         });
       } else if (navigator.geolocation) {
+        let mobileMarker = null;
         navigator.geolocation.watchPosition(
           pos => {
             const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
+
+            if (!mobileMarker) {
+              mobileMarker = L.marker(latlng).addTo(map);
+            } else {
+              mobileMarker.setLatLng(latlng);
+            }
+
             map.setView(latlng);
             updateStatus(latlng);
           },
