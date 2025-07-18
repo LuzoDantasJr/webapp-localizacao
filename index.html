@@ -1,1 +1,209 @@
-Carregando... arquivo será regenerado.
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monitoramento de Área</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    html, body, #map {
+      height: 100%;
+      margin: 0;
+    }
+    #logo-container {
+      position: absolute;
+      top: 0;
+      width: 100%;
+      height: 20vh;
+      background: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    #logo-container img {
+      max-height: 90%;
+      max-width: 90%;
+    }
+    #status-container {
+      position: absolute;
+      top: 20vh;
+      width: 100%;
+      background-color: rgba(255, 255, 255, 0.95);
+      text-align: center;
+      font-weight: bold;
+      padding: 10px;
+      font-size: 1rem;
+      z-index: 999;
+    }
+    .leaflet-control-zoom {
+      position: absolute !important;
+      top: auto !important;
+      bottom: 10px !important;
+      right: 10px !important;
+      left: auto !important;
+      z-index: 1001;
+    }
+
+    
+    .logo-alert-inside {
+      background-color: black !important;
+    }
+    .logo-alert-inside img {
+      filter: invert(1);
+
+      animation: invertBlink 1s infinite alternate;
+    }
+
+    @keyframes invertBlink {
+      from { filter: invert(0); }
+      to { filter: invert(1); }
+    }
+  </style>
+</head>
+<body>
+  <div id="logo-container" class=""><img src="WebAPP_Logo.png" alt="Logo Effatha" /></div>
+  <div id="status-container"><span id="status-text">Localizando...</span></div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      const statusText = document.getElementById("status-text");
+      const statusContainer = document.getElementById("status-container");
+      const logoBox = document.getElementById("logo-container");
+
+      const map = L.map("map").setView([-23.66448, -46.52791], 18);
+      L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+        maxZoom: 18,
+        attribution: "Map data © OpenTopoMap"
+      }).addTo(map);
+
+      const areas = [
+      {
+        nome: "Fogueira",
+        coords: [
+            [-23.6902, -46.24778],
+            [-23.69013, -46.24769],
+            [-23.69021, -46.24761],
+            [-23.69028, -46.2477],
+            [-23.6902, -46.24778]
+          ]
+      },
+        {
+          nome: "Pracinha",
+          coords: [
+            [-23.66448, -46.52791],
+            [-23.6646, -46.52801],
+            [-23.66467, -46.5279],
+            [-23.66456, -46.52782],
+            [-23.66448, -46.52791]
+          ]
+        },
+        {
+          nome: "Siqueira Campos",
+          coords: [
+            [-23.6641, -46.52892],
+            [-23.66405, -46.52891],
+            [-23.66407, -46.52887],
+            [-23.6641, -46.52892]
+          ]
+        }
+      ];
+
+      const polygons = areas.map(area => {
+        const poly = L.polygon(area.coords, {
+          color: "transparent",
+          fillOpacity: 0,
+          stroke: false
+        }).addTo(map);
+        poly.nome = area.nome;
+        return poly;
+      });
+
+      function pointInPolygon(point, vs) {
+        const [x, y] = point;
+        let inside = false;
+        for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+          const xi = vs[i][0], yi = vs[i][1];
+          const xj = vs[j][0], yj = vs[j][1];
+          const intersect =
+            yi > y !== yj > y &&
+            x < ((xj - xi) * (y - yi)) / ((yj - yi) || 1e-10) + xi;
+          if (intersect) inside = !inside;
+        }
+        return inside;
+      }
+
+      function isInsideAnyPolygon(latlng) {
+        for (const polygon of polygons) {
+          const latlngs = polygon.getLatLngs()[0].map(p => [p.lat, p.lng]);
+          if (pointInPolygon([latlng.lat, latlng.lng], latlngs)) {
+            return polygon.nome;
+          }
+        }
+        return null;
+      }
+
+      
+    let blinkInterval = null;
+    function updateStatus(latlng) {
+
+        const nome = isInsideAnyPolygon(latlng);
+        if (nome) {
+          
+          
+          
+        if (!blinkInterval) {
+          blinkInterval = setInterval(() => {
+            logoBox.classList.toggle("logo-alert-inside");
+          }, 800);
+        }
+    
+        } else {
+          
+          
+          
+        clearInterval(blinkInterval);
+        blinkInterval = null;
+        logoBox.classList.remove("logo-alert-inside");
+    
+        }
+      }
+
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const preview = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+
+      if (preview || !isMobile) {
+        const marker = L.marker([-23.66448, -46.52791], { draggable: true }).addTo(map);
+        updateStatus(marker.getLatLng());
+        marker.on("drag", e => {
+          updateStatus(e.target.getLatLng());
+        });
+      } else if (navigator.geolocation) {
+        let mobileMarker = null;
+        navigator.geolocation.watchPosition(
+          pos => {
+            const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
+            if (!mobileMarker) {
+              mobileMarker = L.marker(latlng).addTo(map);
+            } else {
+              mobileMarker.setLatLng(latlng);
+            }
+            map.setView(latlng);
+            updateStatus(latlng);
+          },
+          err => {
+            statusText.textContent = "Erro ao obter localização";
+            statusContainer.style.background = "#ffcccc";
+          },
+          { enableHighAccuracy: true, maximumAge: 1000 }
+        );
+      } else {
+        statusText.textContent = "Geolocalização não suportada";
+        statusContainer.style.background = "#ffcccc";
+      }
+    });
+  </script>
+</body>
+</html>
