@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Teste Diagnóstico de API</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f8f8f8; }
+    pre { background: #fff; padding: 15px; border: 1px solid #ccc; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h2>Resultado da chamada à API:</h2>
+  <pre id="output">Carregando...</pre>
+
+  <script>
+    const username = "5B39C8B553C821E7CDDC6DA64B5BD2EE";
+    const password = "F16828DF16314F7119B09A19F31F4924";
+    const credentials = btoa(`${username}:${password}`);
+    const output = document.getElementById("output");
+
+    fetch("https://maps-hml-treatmentarea.effatha.com.br:4018/TreatmentActivation/Actives", {
+      method: "POST",
+      headers: {
+        "Authorization": `Basic ${credentials}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({
+        version: "1.0.0",
+        lastChange: "2020-01-01T00:00:00.192Z"
+      })
+    })
+    .then(async response => {
+      const text = await response.text();
+      output.textContent = `STATUS: ${response.status} ${response.statusText}\n\n` + text;
+    })
+    .catch(err => {
+      output.textContent = "Erro ao acessar a API:\n" + err;
+    });
+  </script>
+</body>
+</html>
