@@ -10,10 +10,12 @@
     #logo-container {
       position: absolute; top: 0; left: 0; width: 100%; height: 20vh;
       background-color: white; display: flex; align-items: center;
-      justify-content: center; z-index: 1000;
+      justify-content: center; z-index: 1000; transition: background 0.3s;
     }
     #logo-container img {
-      max-height: 90%; max-width: 90%;
+      max-height: 90%;
+      max-width: 90%;
+      transition: filter 0.3s;
     }
     #status {
       position: absolute; top: 20vh; width: 100%;
@@ -21,12 +23,11 @@
       font-weight: bold; font-size: 1.1em; padding: 10px;
       z-index: 999;
     }
-    #menu {
-      position: absolute; top: 25vh; left: 10px;
-      background: white; padding: 10px; border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.3); z-index: 1000;
+    .leaflet-control-zoom {
+      bottom: 10px !important;
+      right: 10px !important;
+      top: auto !important;
     }
-    #menu input, #menu textarea { width: 100%; margin: 5px 0; }
   </style>
 </head>
 <body>
@@ -34,26 +35,37 @@
     <img id="logo" src="WebAPP_Logo.png" alt="Logo Effatha" />
   </div>
   <div id="status">Carregando mapa...</div>
-  <div id="menu">
-    <textarea id="observacao" placeholder="Digite uma observação..."></textarea>
-    <input type="file" accept="image/*" capture="environment" id="foto" />
-    <button onclick="salvarDadosPoligono()">Salvar Dados</button>
-  </div>
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const statusDiv = document.getElementById("status");
-    const observacaoInput = document.getElementById("observacao");
-    const fotoInput = document.getElementById("foto");
+    const logoContainer = document.getElementById("logo-container");
+    const logoImg = document.getElementById("logo");
 
     const username = "5B39C8B553C821E7CDDC6DA64B5BD2EE";
     const password = "F16828DF16314F7119B09A19F31F4924";
     const credentials = btoa(`${username}:${password}`);
 
-    const poligonoLayers = {};
-    let hashAtual = null;
-    let map;
+    let blinking = false;
+    let blinkInterval = null;
+
+    function startBlinking() {
+      if (blinking) return;
+      blinking = true;
+      blinkInterval = setInterval(() => {
+        const inverted = logoImg.style.filter === "invert(1)";
+        logoImg.style.filter = inverted ? "invert(0)" : "invert(1)";
+        logoContainer.style.background = inverted ? "white" : "black";
+      }, 800);
+    }
+
+    function stopBlinking() {
+      blinking = false;
+      clearInterval(blinkInterval);
+      logoImg.style.filter = "invert(0)";
+      logoContainer.style.background = "white";
+    }
 
     function parseWKT(wkt) {
       return wkt.replace("POLYGON((", "").replace("))", "").split(", ").map(p => {
@@ -69,26 +81,6 @@
     function carregarPoligonosLocais() {
       const dados = localStorage.getItem("poligonos");
       return dados ? JSON.parse(dados) : [];
-    }
-
-    function salvarDadosPoligono() {
-      if (!hashAtual) return alert("Nenhum polígono selecionado.");
-      const texto = observacaoInput.value;
-      const imagem = fotoInput.files[0];
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dados = JSON.parse(localStorage.getItem("dados") || "{}");
-        dados[hashAtual] = {
-          texto,
-          imagem: reader.result,
-          data: new Date().toISOString()
-        };
-        localStorage.setItem("dados", JSON.stringify(dados));
-        alert("Dados salvos.");
-      };
-      if (imagem) reader.readAsDataURL(imagem);
-      else reader.onload();
     }
 
     function isInsidePolygon(latlng, vs) {
@@ -107,20 +99,14 @@
     function verificarSeDentro(latlng, poligonos) {
       for (const area of poligonos) {
         const coords = parseWKT(area.reducedPolygon);
-        if (isInsidePolygon(latlng, coords)) {
-          hashAtual = area.hash;
-          poligonoLayers[area.hash].setStyle({ color: "orange" });
-          return;
-        }
+        if (isInsidePolygon(latlng, coords)) return true;
       }
-      hashAtual = null;
-      for (const hash in poligonoLayers) {
-        poligonoLayers[hash].setStyle({ color: "blue" });
-      }
+      return false;
     }
 
     async function atualizarPoligonosViaAPI() {
       statusDiv.textContent = "Validando certificados de satélites ... aguarde.";
+
       const lastChange = localStorage.getItem("lastChange") || "2020-01-01T00:00:00.000Z";
 
       try {
@@ -130,13 +116,17 @@
             "Authorization": `Basic ${credentials}`,
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ version: "1.0.0", lastChange })
+          body: JSON.stringify({
+            version: "1.0.0",
+            lastChange: lastChange
+          })
         });
 
         if (!res.ok) throw new Error("Erro HTTP");
 
         const resultado = await res.json();
         const recebidos = resultado.data || [];
+
         let locais = carregarPoligonosLocais();
 
         for (const p of recebidos) {
@@ -165,7 +155,7 @@
 
     async function init() {
       const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      map = L.map("map").setView([-23.66448, -46.52791], 18);
+      const map = L.map("map").setView([-23.66448, -46.52791], 18);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap contributors"
       }).addTo(map);
@@ -174,25 +164,15 @@
 
       for (const area of areas) {
         const coords = parseWKT(area.reducedPolygon);
-        const poly = L.polygon(coords, { color: "blue", fillOpacity: 0.3 }).addTo(map);
-        poligonoLayers[area.hash] = poly;
-
-        poly.on("contextmenu", function (event) {
-          if (!isMobile) {
-            event.originalEvent.preventDefault();
-            if (confirm("Deseja excluir esta área?")) {
-              map.removeLayer(poly);
-              delete poligonoLayers[area.hash];
-              const locais = carregarPoligonosLocais().filter(p => p.hash !== area.hash);
-              salvarPoligonos(locais);
-              statusDiv.textContent = `Área removida: ${area.hash}`;
-            }
-          }
-        });
+        L.polygon(coords, { color: "blue", fillOpacity: 0.3 }).addTo(map);
       }
 
       function atualizarStatus(latlng) {
-        verificarSeDentro(latlng, areas);
+        if (verificarSeDentro(latlng, areas)) {
+          startBlinking();
+        } else {
+          stopBlinking();
+        }
       }
 
       if (isMobile && navigator.geolocation) {
@@ -209,7 +189,9 @@
       } else {
         const marker = L.marker([-23.66448, -46.52791], { draggable: true }).addTo(map);
         atualizarStatus(marker.getLatLng());
-        marker.on("drag", e => atualizarStatus(e.target.getLatLng()));
+        marker.on("drag", e => {
+          atualizarStatus(e.target.getLatLng());
+        });
       }
     }
 
