@@ -3,13 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <title>Monitoramento com localStorage</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; }
-    #status { 
-      position: absolute; top: 20vh; width: 100%; text-align: center;
-      background: rgba(255,255,255,0.9); z-index: 999;
-      font-weight: bold; font-size: 1.2em; padding: 10px;
+    #logo-container {
+      position: absolute; top: 0; left: 0; width: 100%; height: 20vh;
+      background-color: white; display: flex; align-items: center;
+      justify-content: center; z-index: 1000; transition: background 0.3s;
+    }
+    #logo-container img {
+      max-height: 90%;
+      max-width: 90%;
+      transition: filter 0.3s;
+    }
+    #status {
+      position: absolute; top: 20vh; width: 100%;
+      background: rgba(255,255,255,0.95); text-align: center;
+      font-weight: bold; font-size: 1.1em; padding: 10px;
+      z-index: 999;
     }
     .leaflet-control-zoom {
       bottom: 10px !important;
@@ -17,19 +29,43 @@
       top: auto !important;
     }
   </style>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
+  <div id="logo-container">
+    <img id="logo" src="WebAPP_Logo.png" alt="Logo Effatha" />
+  </div>
   <div id="status">Carregando mapa...</div>
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const statusDiv = document.getElementById("status");
+    const logoContainer = document.getElementById("logo-container");
+    const logoImg = document.getElementById("logo");
 
     const username = "5B39C8B553C821E7CDDC6DA64B5BD2EE";
     const password = "F16828DF16314F7119B09A19F31F4924";
     const credentials = btoa(`${username}:${password}`);
+
+    let blinking = false;
+    let blinkInterval = null;
+
+    function startBlinking() {
+      if (blinking) return;
+      blinking = true;
+      blinkInterval = setInterval(() => {
+        const inverted = logoImg.style.filter === "invert(1)";
+        logoImg.style.filter = inverted ? "invert(0)" : "invert(1)";
+        logoContainer.style.background = inverted ? "white" : "black";
+      }, 800);
+    }
+
+    function stopBlinking() {
+      blinking = false;
+      clearInterval(blinkInterval);
+      logoImg.style.filter = "invert(0)";
+      logoContainer.style.background = "white";
+    }
 
     function parseWKT(wkt) {
       return wkt.replace("POLYGON((", "").replace("))", "").split(", ").map(p => {
@@ -45,6 +81,27 @@
     function carregarPoligonosLocais() {
       const dados = localStorage.getItem("poligonos");
       return dados ? JSON.parse(dados) : [];
+    }
+
+    function isInsidePolygon(latlng, vs) {
+      let x = latlng.lat, y = latlng.lng;
+      let inside = false;
+      for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        let xi = vs[i][0], yi = vs[i][1];
+        let xj = vs[j][0], yj = vs[j][1];
+        let intersect = ((yi > y) !== (yj > y)) &&
+                        (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-10) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function verificarSeDentro(latlng, poligonos) {
+      for (const area of poligonos) {
+        const coords = parseWKT(area.reducedPolygon);
+        if (isInsidePolygon(latlng, coords)) return true;
+      }
+      return false;
     }
 
     async function atualizarPoligonosViaAPI() {
@@ -88,11 +145,14 @@
       } catch (err) {
         console.error(err);
         statusDiv.textContent = "Erro ao validar certificados de satélites.";
-        return carregarPoligonosLocais(); // fallback
+        return carregarPoligonosLocais();
       }
     }
 
     async function init() {
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const preview = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+
       const map = L.map("map").setView([-23.66448, -46.52791], 18);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap contributors"
@@ -103,6 +163,33 @@
       for (const area of areas) {
         const coords = parseWKT(area.reducedPolygon);
         L.polygon(coords, { color: "blue", fillOpacity: 0.3 }).addTo(map);
+      }
+
+      function atualizarStatus(latlng) {
+        if (verificarSeDentro(latlng, areas)) {
+          startBlinking();
+        } else {
+          stopBlinking();
+        }
+      }
+
+      if (isMobile && navigator.geolocation) {
+        navigator.geolocation.watchPosition(
+          pos => {
+            const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
+            atualizarStatus(latlng);
+            L.marker(latlng).addTo(map);
+            map.setView(latlng);
+          },
+          err => console.error(err),
+          { enableHighAccuracy: true }
+        );
+      } else {
+        const marker = L.marker([-23.66448, -46.52791], { draggable: true }).addTo(map);
+        atualizarStatus(marker.getLatLng());
+        marker.on("drag", e => {
+          atualizarStatus(e.target.getLatLng());
+        });
       }
     }
 
