@@ -144,7 +144,7 @@
 
         salvarPoligonos(locais);
         localStorage.setItem("lastChange", new Date().toISOString());
-        statusDiv.textContent = `${locais.length} polígonos carregados.`;
+        statusDiv.textContent = `Polígonos existentes: ${locais.length} / Recebidos da API: ${recebidos.length}`;
         return locais;
       } catch (err) {
         console.error(err);
