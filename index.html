@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Monitoramento com localStorage</title>
+  <title>Monitoramento com Sincronização</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
@@ -107,6 +107,8 @@
     async function atualizarPoligonosViaAPI() {
       statusDiv.textContent = "Validando certificados de satélites ... aguarde.";
 
+      const lastChange = localStorage.getItem("lastChange") || "2020-01-01T00:00:00.000Z";
+
       try {
         const res = await fetch("https://maps-hml-treatmentarea.effatha.com.br:4018/TreatmentActivation/Actives", {
           method: "POST",
@@ -116,7 +118,7 @@
           },
           body: JSON.stringify({
             version: "1.0.0",
-            lastChange: "2020-01-01T00:00:00.192Z"
+            lastChange: lastChange
           })
         });
 
@@ -128,18 +130,20 @@
         let locais = carregarPoligonosLocais();
 
         for (const p of recebidos) {
+          const novo = { hash: p.hash, reducedPolygon: p.reducedPolygon };
           const index = locais.findIndex(x => x.hash === p.hash);
 
           if (p.action === "C") {
-            if (index === -1) locais.push(p);
+            if (index === -1) locais.push(novo);
           } else if (p.action === "U") {
-            if (index !== -1) locais[index] = p;
+            if (index !== -1) locais[index] = novo;
           } else if (p.action === "D") {
             if (index !== -1) locais.splice(index, 1);
           }
         }
 
         salvarPoligonos(locais);
+        localStorage.setItem("lastChange", new Date().toISOString());
         statusDiv.textContent = `${locais.length} polígonos carregados.`;
         return locais;
       } catch (err) {
@@ -151,8 +155,6 @@
 
     async function init() {
       const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const preview = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-
       const map = L.map("map").setView([-23.66448, -46.52791], 18);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap contributors"
