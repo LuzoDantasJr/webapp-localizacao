@@ -1,70 +1,54 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Monitoramento com SQLite</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <title>Monitoramento com localStorage</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    html, body, #map { height: 100%; margin: 0; }
-    #status-container {
-      position: absolute; top: 20vh; width: 100%;
-      background: rgba(255,255,255,0.95);
-      text-align: center; font-weight: bold;
-      padding: 12px; font-size: 1.1rem; z-index: 1000;
+    html, body, #map { height: 100%; margin: 0; padding: 0; }
+    #status { 
+      position: absolute; top: 20vh; width: 100%; text-align: center;
+      background: rgba(255,255,255,0.9); z-index: 999;
+      font-weight: bold; font-size: 1.2em; padding: 10px;
     }
     .leaflet-control-zoom {
-      position: absolute !important;
       bottom: 10px !important;
       right: 10px !important;
-      z-index: 1001;
+      top: auto !important;
     }
   </style>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
-  <div id="status-container">Carregando...</div>
+  <div id="status">Carregando mapa...</div>
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script type="module">
-    import { CapacitorSQLite, SQLiteConnection } from "https://cdn.jsdelivr.net/npm/@capacitor-community/sqlite@5.0.2/dist/esm/index.js";
+  <script>
+    const statusDiv = document.getElementById("status");
 
-    const sqlite = new SQLiteConnection(CapacitorSQLite);
-    const statusDiv = document.getElementById("status-container");
-
-    async function inicializarBanco() {
-      const dbName = "areasDb";
-
-      const exists = await sqlite.isDatabase(dbName);
-      if (!exists.result) {
-        const db = await sqlite.createConnection(dbName, false, "no-encryption", 1);
-        await db.open();
-        await db.execute(`
-          CREATE TABLE IF NOT EXISTS areas (
-            hash TEXT PRIMARY KEY,
-            latitude REAL,
-            longitude REAL,
-            reducedPolygon TEXT
-          );
-        `);
-        await db.close();
-      }
-    }
+    const username = "5B39C8B553C821E7CDDC6DA64B5BD2EE";
+    const password = "F16828DF16314F7119B09A19F31F4924";
+    const credentials = btoa(`${username}:${password}`);
 
     function parseWKT(wkt) {
-      const coords = wkt.replace("POLYGON((", "").replace("))", "").split(", ");
-      return coords.map(p => {
+      return wkt.replace("POLYGON((", "").replace("))", "").split(", ").map(p => {
         const [lng, lat] = p.trim().split(" ").map(Number);
         return [lat, lng];
       });
     }
 
-    async function carregarDaAPIeAtualizarDB() {
-      statusDiv.textContent = "Validando certificados de satélites ... aguarde.";
+    function salvarPoligonos(poligonos) {
+      localStorage.setItem("poligonos", JSON.stringify(poligonos));
+    }
 
-      const username = "5B39C8B553C821E7CDDC6DA64B5BD2EE";
-      const password = "F16828DF16314F7119B09A19F31F4924";
-      const credentials = btoa(`${username}:${password}`);
+    function carregarPoligonosLocais() {
+      const dados = localStorage.getItem("poligonos");
+      return dados ? JSON.parse(dados) : [];
+    }
+
+    async function atualizarPoligonosViaAPI() {
+      statusDiv.textContent = "Validando certificados de satélites ... aguarde.";
 
       try {
         const res = await fetch("https://maps-hml-treatmentarea.effatha.com.br:4018/TreatmentActivation/Actives", {
@@ -79,57 +63,50 @@
           })
         });
 
-        if (!res.ok) throw new Error("Erro ao buscar dados");
+        if (!res.ok) throw new Error("Erro HTTP");
 
-        const result = await res.json();
-        const data = result.data || [];
+        const resultado = await res.json();
+        const recebidos = resultado.data || [];
 
-        const db = await sqlite.createConnection("areasDb", false, "no-encryption", 1);
-        await db.open();
+        let locais = carregarPoligonosLocais();
 
-        for (const area of data) {
-          const { hash, latitude, longitude, reducedPolygon, action } = area;
+        for (const p of recebidos) {
+          const index = locais.findIndex(x => x.hash === p.hash);
 
-          if (action === "C") {
-            await db.run("INSERT OR IGNORE INTO areas (hash, latitude, longitude, reducedPolygon) VALUES (?, ?, ?, ?);", [
-              hash, latitude, longitude, reducedPolygon
-            ]);
-          } else if (action === "U") {
-            await db.run("UPDATE areas SET latitude = ?, longitude = ?, reducedPolygon = ? WHERE hash = ?;", [
-              latitude, longitude, reducedPolygon, hash
-            ]);
-          } else if (action === "D") {
-            await db.run("DELETE FROM areas WHERE hash = ?;", [hash]);
+          if (p.action === "C") {
+            if (index === -1) locais.push(p);
+          } else if (p.action === "U") {
+            if (index !== -1) locais[index] = p;
+          } else if (p.action === "D") {
+            if (index !== -1) locais.splice(index, 1);
           }
         }
 
-        const queryRes = await db.query("SELECT * FROM areas;");
-        await db.close();
-
-        statusDiv.textContent = `${queryRes.values.length} polígonos carregados.`;
-        return queryRes.values.map(area => parseWKT(area.reducedPolygon));
+        salvarPoligonos(locais);
+        statusDiv.textContent = `${locais.length} polígonos carregados.`;
+        return locais;
       } catch (err) {
-        statusDiv.textContent = "Erro ao carregar dados: " + err;
-        return [];
+        console.error(err);
+        statusDiv.textContent = "Erro ao validar certificados de satélites.";
+        return carregarPoligonosLocais(); // fallback
       }
     }
 
-    async function iniciar() {
+    async function init() {
       const map = L.map("map").setView([-23.66448, -46.52791], 18);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
         attribution: "© OpenStreetMap contributors"
       }).addTo(map);
 
-      await inicializarBanco();
-      const poligonos = await carregarDaAPIeAtualizarDB();
+      const areas = await atualizarPoligonosViaAPI();
 
-      for (const coords of poligonos) {
-        L.polygon(coords, { color: "blue", fillOpacity: 0.2 }).addTo(map);
+      for (const area of areas) {
+        const coords = parseWKT(area.reducedPolygon);
+        L.polygon(coords, { color: "blue", fillOpacity: 0.3 }).addTo(map);
       }
     }
 
-    window.addEventListener("DOMContentLoaded", iniciar);
+    window.addEventListener("DOMContentLoaded", init);
   </script>
 </body>
 </html>
