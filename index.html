@@ -49,6 +49,7 @@
 
     let blinking = false;
     let blinkInterval = null;
+    let userMarker = null;
 
     function startBlinking() {
       if (blinking) return;
@@ -95,6 +96,16 @@
       }
       return inside;
     }
+
+
+function verificarHashDentro(latlng, poligonos) {
+  for (const area of poligonos) {
+    const coords = parseWKT(area.reducedPolygon);
+    if (isInsidePolygon(latlng, coords)) return area.hash;
+  }
+  return null;
+}
+
 
     function verificarSeDentro(latlng, poligonos) {
       for (const area of poligonos) {
@@ -168,10 +179,13 @@
       }
 
       function atualizarStatus(latlng) {
-        if (verificarSeDentro(latlng, areas)) {
+      const hash = verificarHashDentro(latlng, areas);
+        if (hash) {
+        statusDiv.textContent += `\nHASH: ${hash}`;
           startBlinking();
         } else {
           stopBlinking();
+        statusDiv.textContent = statusDiv.textContent.split("\n")[0];
         }
       }
 
@@ -180,7 +194,11 @@
           pos => {
             const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
             atualizarStatus(latlng);
-            L.marker(latlng).addTo(map);
+            if (!userMarker) {
+              userMarker = L.marker(latlng).addTo(map);
+            } else {
+              userMarker.setLatLng(latlng);
+            }
             map.setView(latlng);
           },
           err => console.error(err),
