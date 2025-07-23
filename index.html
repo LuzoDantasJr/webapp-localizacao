@@ -42,6 +42,7 @@
     const statusDiv = document.getElementById("status");
     const logoContainer = document.getElementById("logo-container");
     const logoImg = document.getElementById("logo");
+let syncMessage = "";
 
     const username = "5B39C8B553C821E7CDDC6DA64B5BD2EE";
     const password = "F16828DF16314F7119B09A19F31F4924";
@@ -155,7 +156,8 @@ function verificarHashDentro(latlng, poligonos) {
 
         salvarPoligonos(locais);
         localStorage.setItem("lastChange", new Date().toISOString());
-        statusDiv.textContent = `Polígonos existentes: ${locais.length} / Recebidos da API: ${recebidos.length}`;
+        syncMessage = `Polígonos existentes: ${locais.length} / Recebidos da API: ${recebidos.length}`;
+        statusDiv.textContent = syncMessage;
         return locais;
       } catch (err) {
         console.error(err);
@@ -181,11 +183,11 @@ function verificarHashDentro(latlng, poligonos) {
       function atualizarStatus(latlng) {
       const hash = verificarHashDentro(latlng, areas);
         if (hash) {
-        statusDiv.textContent += `\nHASH: ${hash}`;
+        statusDiv.textContent = syncMessage + `\nHASH: ${hash}`;
           startBlinking();
         } else {
           stopBlinking();
-        statusDiv.textContent = statusDiv.textContent.split("\n")[0];
+        statusDiv.textContent = syncMessage;
         }
       }
 
