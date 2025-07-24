@@ -1,10 +1,10 @@
 const CACHE_NAME = 'monitoramento-cache-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
+  '/index_pwa_final.html',
   '/manifest.json',
   '/icon-192.png',
-  '/icon-512.png'
+  '/icon-512.png',
+  '/WebAPP_Logo.png'
 ];
 
 self.addEventListener('install', event => {
@@ -15,6 +15,6 @@ self.addEventListener('install', event => {
 
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request).then(response => response || fetch(event.request))
+    caches.match(event.request).then(resp => resp || fetch(event.request))
   );
 });
