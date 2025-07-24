@@ -2,220 +2,63 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Monitoramento com Sincronização</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000" />
+  <title>Monitoramento de Área</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.png" />
   <style>
-    html, body, #map { height: 100%; margin: 0; padding: 0; }
-    #logo-container {
-      position: absolute; top: 0; left: 0; width: 100%; height: 20vh;
-      background-color: white; display: flex; align-items: center;
-      justify-content: center; z-index: 1000; transition: background 0.3s;
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      touch-action: manipulation;
+      user-select: none;
+      font-family: sans-serif;
     }
-    #logo-container img {
+    #logo-container {
+      width: 100%;
+      height: 20vh;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #logo {
       max-height: 90%;
-      max-width: 90%;
-      transition: filter 0.3s;
     }
     #status {
-      position: absolute; top: 20vh; width: 100%;
-      background: rgba(255,255,255,0.95); text-align: center;
-      font-weight: bold; font-size: 1.1em; padding: 10px;
-      z-index: 999;
+      height: 10vh;
+      background: #f0f0f0;
+      padding: 10px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
-    .leaflet-control-zoom {
-      bottom: 10px !important;
-      right: 10px !important;
-      top: auto !important;
+    #map {
+      height: 70vh;
+      width: 100%;
     }
   </style>
 </head>
 <body>
   <div id="logo-container">
-    <img id="logo" src="WebAPP_Logo.png" alt="Logo Effatha" />
+    <img id="logo" src="icon-192.png" alt="Logo">
   </div>
-  <div id="status">Carregando mapa...</div>
+  <div id="status">Carregando...</div>
   <div id="map"></div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const statusDiv = document.getElementById("status");
-    const logoContainer = document.getElementById("logo-container");
-    const logoImg = document.getElementById("logo");
-let syncMessage = "";
-
-    const username = "5B39C8B553C821E7CDDC6DA64B5BD2EE";
-    const password = "F16828DF16314F7119B09A19F31F4924";
-    const credentials = btoa(`${username}:${password}`);
-
-    let blinking = false;
-    let blinkInterval = null;
-    let userMarker = null;
-
-    function startBlinking() {
-      if (blinking) return;
-      blinking = true;
-      blinkInterval = setInterval(() => {
-        const inverted = logoImg.style.filter === "invert(1)";
-        logoImg.style.filter = inverted ? "invert(0)" : "invert(1)";
-        logoContainer.style.background = inverted ? "white" : "black";
-      }, 800);
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(reg => console.log('Service Worker registrado:', reg.scope))
+        .catch(err => console.error('Erro ao registrar SW:', err));
     }
-
-    function stopBlinking() {
-      blinking = false;
-      clearInterval(blinkInterval);
-      logoImg.style.filter = "invert(0)";
-      logoContainer.style.background = "white";
-    }
-
-    function parseWKT(wkt) {
-      return wkt.replace("POLYGON((", "").replace("))", "").split(", ").map(p => {
-        const [lng, lat] = p.trim().split(" ").map(Number);
-        return [lat, lng];
-      });
-    }
-
-    function salvarPoligonos(poligonos) {
-      localStorage.setItem("poligonos", JSON.stringify(poligonos));
-    }
-
-    function carregarPoligonosLocais() {
-      const dados = localStorage.getItem("poligonos");
-      return dados ? JSON.parse(dados) : [];
-    }
-
-    function isInsidePolygon(latlng, vs) {
-      let x = latlng.lat, y = latlng.lng;
-      let inside = false;
-      for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
-        let xi = vs[i][0], yi = vs[i][1];
-        let xj = vs[j][0], yj = vs[j][1];
-        let intersect = ((yi > y) !== (yj > y)) &&
-                        (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-10) + xi);
-        if (intersect) inside = !inside;
-      }
-      return inside;
-    }
-
-
-function verificarHashDentro(latlng, poligonos) {
-  for (const area of poligonos) {
-    const coords = parseWKT(area.reducedPolygon);
-    if (isInsidePolygon(latlng, coords)) return area.hash;
-  }
-  return null;
-}
-
-
-    function verificarSeDentro(latlng, poligonos) {
-      for (const area of poligonos) {
-        const coords = parseWKT(area.reducedPolygon);
-        if (isInsidePolygon(latlng, coords)) return true;
-      }
-      return false;
-    }
-
-    async function atualizarPoligonosViaAPI() {
-      statusDiv.textContent = "Validando certificados de satélites ... aguarde.";
-
-      const lastChange = localStorage.getItem("lastChange") || "2020-01-01T00:00:00.000Z";
-
-      try {
-        const res = await fetch("https://maps-hml-treatmentarea.effatha.com.br:4018/TreatmentActivation/Actives", {
-          method: "POST",
-          headers: {
-            "Authorization": `Basic ${credentials}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            version: "1.0.0",
-            lastChange: lastChange
-          })
-        });
-
-        if (!res.ok) throw new Error("Erro HTTP");
-
-        const resultado = await res.json();
-        const recebidos = resultado.data || [];
-
-        let locais = carregarPoligonosLocais();
-
-        for (const p of recebidos) {
-          const novo = { hash: p.hash, reducedPolygon: p.reducedPolygon };
-          const index = locais.findIndex(x => x.hash === p.hash);
-
-          if (p.action === "C") {
-            if (index === -1) locais.push(novo);
-          } else if (p.action === "U") {
-            if (index !== -1) locais[index] = novo;
-          } else if (p.action === "D") {
-            if (index !== -1) locais.splice(index, 1);
-          }
-        }
-
-        salvarPoligonos(locais);
-        localStorage.setItem("lastChange", new Date().toISOString());
-        syncMessage = `Polígonos existentes: ${locais.length} / Recebidos da API: ${recebidos.length}`;
-        statusDiv.textContent = syncMessage;
-        return locais;
-      } catch (err) {
-        console.error(err);
-        statusDiv.textContent = "Erro ao validar certificados de satélites.";
-        return carregarPoligonosLocais();
-      }
-    }
-
-    async function init() {
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const map = L.map("map").setView([-23.66448, -46.52791], 18);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors"
-      }).addTo(map);
-
-      const areas = await atualizarPoligonosViaAPI();
-
-      for (const area of areas) {
-        const coords = parseWKT(area.reducedPolygon);
-        L.polygon(coords, { color: "blue", fillOpacity: 0.3 }).addTo(map);
-      }
-
-      function atualizarStatus(latlng) {
-      const hash = verificarHashDentro(latlng, areas);
-        if (hash) {
-        statusDiv.textContent = syncMessage + `\nHASH: ${hash}`;
-          startBlinking();
-        } else {
-          stopBlinking();
-        statusDiv.textContent = syncMessage;
-        }
-      }
-
-      if (isMobile && navigator.geolocation) {
-        navigator.geolocation.watchPosition(
-          pos => {
-            const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
-            atualizarStatus(latlng);
-            if (!userMarker) {
-              userMarker = L.marker(latlng).addTo(map);
-            } else {
-              userMarker.setLatLng(latlng);
-            }
-            map.setView(latlng);
-          },
-          err => console.error(err),
-          { enableHighAccuracy: true }
-        );
-      } else {
-        const marker = L.marker([-23.66448, -46.52791], { draggable: true }).addTo(map);
-        atualizarStatus(marker.getLatLng());
-        marker.on("drag", e => {
-          atualizarStatus(e.target.getLatLng());
-        });
-      }
-    }
-
-    window.addEventListener("DOMContentLoaded", init);
   </script>
 </body>
 </html>
