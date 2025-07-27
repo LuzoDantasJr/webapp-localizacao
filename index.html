@@ -1,16 +1,17 @@
 <!DOCTYPE html>
+
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>Monitoramento com Sincronização</title>
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="canonical" href="https://luzodantasjr.github.io/webapp-localizacao/">
-  <link rel="manifest" href="/webapp-localizacao/manifest.json">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
+<meta charset="utf-8"/>
+<title>Monitoramento com Sincronização</title>
+<meta content="yes" name="mobile-web-app-capable"/>
+<meta content="yes" name="apple-mobile-web-app-capable"/>
+<meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
+<link href="https://luzodantasjr.github.io/webapp-localizacao/" rel="canonical"/>
+<link href="/webapp-localizacao/manifest.json" rel="manifest"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
+<style>
     html, body, #map { height: 100%; margin: 0; padding: 0; }
     #logo-container {
       position: absolute; top: 0; left: 0; width: 100%; height: 20vh;
@@ -36,14 +37,13 @@
   </style>
 </head>
 <body>
-  <div id="logo-container">
-    <img id="logo" src="WebAPP_Logo.png" alt="Logo Effatha" />
-  </div>
-  <div id="status">Carregando mapa...</div>
-  <div id="map"></div>
-
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
+<div id="logo-container">
+<img alt="Logo Effatha" id="logo" src="WebAPP_Logo.png"/>
+</div>
+<div id="status">Carregando mapa...</div>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
     const statusDiv = document.getElementById("status");
     const logoContainer = document.getElementById("logo-container");
     const logoImg = document.getElementById("logo");
@@ -173,16 +173,16 @@ function verificarHashDentro(latlng, poligonos) {
 
     async function init() {
       const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const map = L.map("map").setView([-23.66448, -46.52791], 18);
+      const map = L.map("map", { zoomControl: false }).setView([-23.66448, -46.52791], 18);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap contributors"
-      }).addTo(map);
+      , errorTileUrl: 'fallback-rural.png' }).addTo(map);
 
       const areas = await atualizarPoligonosViaAPI();
 
       for (const area of areas) {
         const coords = parseWKT(area.reducedPolygon);
-        L.polygon(coords, { color: "blue", fillOpacity: 0.3 }).addTo(map);
+        L.polygon(coords, { color: "blue", fillOpacity: 0.3 , errorTileUrl: 'fallback-rural.png' }).addTo(map);
       }
 
       function atualizarStatus(latlng) {
@@ -212,7 +212,7 @@ function verificarHashDentro(latlng, poligonos) {
           { enableHighAccuracy: true }
         );
       } else {
-        const marker = L.marker([-23.66448, -46.52791], { draggable: true }).addTo(map);
+        const marker = L.marker([-23.66448, -46.52791], { draggable: true , errorTileUrl: 'fallback-rural.png' }).addTo(map);
         atualizarStatus(marker.getLatLng());
         marker.on("drag", e => {
           atualizarStatus(e.target.getLatLng());
