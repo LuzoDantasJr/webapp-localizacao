@@ -9,57 +9,22 @@
 <meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
 <link href="https://luzodantasjr.github.io/webapp-localizacao/" rel="canonical"/>
 <link href="/webapp-localizacao/manifest.json" rel="manifest"/>
-<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
-<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport">
+<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
 <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; }
-#logo-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 20vh;
-  background-color: white;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 20vh;
-  background-color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  transition: background 0.3s;
-  top: 20vh;
+    #logo-container {
+      position: absolute; top: 0; left: 0; width: 100%; height: 20vh;
       background-color: white; display: flex; align-items: center;
       justify-content: center; z-index: 1000; transition: background 0.3s;
     }
-#logo-container img {
-  max-height: 100%;
-  max-width: 90%;
-  object-fit: contain;
-  transition: filter 0.3s;
-      max-height: 90%;
-      max-width: 90%;
+    #logo-container img {
+      max-height: 80%;
+      max-width: 80%;
       transition: filter 0.3s;
     }
-#status {
-  position: absolute;
-  top: 20vh;
-  left: 0;
-  width: 100%;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 10px;
-  border-radius: 0;
-  text-align: center;
-  font-weight: bold;
-  z-index: 999;
-  top: 20vh;
+    #status {
+      position: absolute; top: 20vh; width: 100%;
       background: rgba(255,255,255,0.95); text-align: center;
       font-weight: bold; font-size: 1.1em; padding: 10px;
       z-index: 999;
@@ -67,11 +32,10 @@
     .leaflet-control-zoom {
       bottom: 10px !important;
       right: 10px !important;
-  top: 20vh;
+      top: auto !important;
     }
   </style>
-</head>
-<body>
+</link></meta></head><body>
 <div id="logo-container">
 <img alt="Logo Effatha" id="logo" src="WebAPP_Logo.png"/>
 </div>
@@ -196,7 +160,7 @@ function verificarHashDentro(latlng, poligonos) {
 
         salvarPoligonos(locais);
         localStorage.setItem("lastChange", new Date().toISOString());
-        syncMessage = `Polígonos existentes: ${locais.length} / Recebidos da API: ${recebidos.length}`;
+        syncMessage = `Polígonos: ${locais.length} / Veio da API: ${recebidos.length}`;
         statusDiv.textContent = syncMessage;
         return locais;
       } catch (err) {
@@ -208,7 +172,7 @@ function verificarHashDentro(latlng, poligonos) {
 
     async function init() {
       const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const map = L.map("map").setView([-23.66448, -46.52791], 18);
+      const map = L.map("map", { zoomControl: false }).setView([-23.66448, -46.52791], 18);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap contributors"
       }).addTo(map);
