@@ -174,7 +174,11 @@ function verificarHashDentro(latlng, poligonos) {
     async function init() {
       const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
       const map = L.map("map", { zoomControl: false }).setView([-23.66448, -46.52791], 18);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+const fallbackTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18,
+  attribution: 'Map data © OpenStreetMap contributors',
+  errorTileUrl: 'fallback-urbano.png'
+}).addTo(map);
         attribution: "© OpenStreetMap contributors"
       , errorTileUrl: 'fallback-rural.png' }).addTo(map);
 
@@ -221,6 +225,14 @@ function verificarHashDentro(latlng, poligonos) {
     }
 
     window.addEventListener("DOMContentLoaded", init);
-  </script>
+  
+
+map.on('zoomend', function () {
+  const zoom = map.getZoom();
+  const fallback = zoom <= 14 ? 'fallback-rural.png' : 'fallback-urbano.png';
+  fallbackTileLayer.options.errorTileUrl = fallback;
+  fallbackTileLayer.redraw();
+});
+</script>
 </body>
 </html>
