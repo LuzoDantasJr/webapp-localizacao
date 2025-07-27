@@ -9,12 +9,12 @@
 <meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
 <link href="https://luzodantasjr.github.io/webapp-localizacao/" rel="canonical"/>
 <link href="/webapp-localizacao/manifest.json" rel="manifest"/>
-<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
-<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport">
+<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
 <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; }
     #logo-container {
-      position: absolute; top: 0; left: 0; width: 100%; height: 20vh;
+  top: 20vh;
       background-color: white; display: flex; align-items: center;
       justify-content: center; z-index: 1000; transition: background 0.3s;
     }
@@ -23,8 +23,8 @@
       max-width: 90%;
       transition: filter 0.3s;
     }
-    #status {
-      position: absolute; top: 20vh; width: 100%;
+#status {
+  top: 20vh;
       background: rgba(255,255,255,0.95); text-align: center;
       font-weight: bold; font-size: 1.1em; padding: 10px;
       z-index: 999;
@@ -32,10 +32,10 @@
     .leaflet-control-zoom {
       bottom: 10px !important;
       right: 10px !important;
-      top: auto !important;
+  top: 20vh;
     }
   </style>
-</head>
+</link></meta></head>
 <body>
 <div id="logo-container">
 <img alt="Logo Effatha" id="logo" src="WebAPP_Logo.png"/>
@@ -173,16 +173,16 @@ function verificarHashDentro(latlng, poligonos) {
 
     async function init() {
       const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const map = L.map("map", { zoomControl: false }).setView([-23.66448, -46.52791], 18);
+      const map = L.map("map").setView([-23.66448, -46.52791], 18);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap contributors"
-      , errorTileUrl: 'fallback-rural.png' }).addTo(map);
+      }).addTo(map);
 
       const areas = await atualizarPoligonosViaAPI();
 
       for (const area of areas) {
         const coords = parseWKT(area.reducedPolygon);
-        L.polygon(coords, { color: "blue", fillOpacity: 0.3 , errorTileUrl: 'fallback-rural.png' }).addTo(map);
+        L.polygon(coords, { color: "blue", fillOpacity: 0.3 }).addTo(map);
       }
 
       function atualizarStatus(latlng) {
@@ -212,7 +212,8 @@ function verificarHashDentro(latlng, poligonos) {
           { enableHighAccuracy: true }
         );
       } else {
-        const marker = L.marker([-23.66448, -46.52791], { draggable: true , errorTileUrl: 'fallback-rural.png' }).addTo(map);
+        const marker = L.marker([-23.66448, -46.52791], { draggable: true }).addTo(map);
+map.on('moveend', () => marker.setLatLng(map.getCenter()));
         atualizarStatus(marker.getLatLng());
         marker.on("drag", e => {
           atualizarStatus(e.target.getLatLng());
