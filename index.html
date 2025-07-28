@@ -14,7 +14,7 @@
 <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; }
     #logo-container {
-      position: absolute; top: 2; left: 0; width: 100%; height: 18vh;
+      position: absolute; top: 0; left: 0; width: 100%; height: 20vh;
       background-color: white; display: flex; align-items: center;
       justify-content: center; z-index: 1000; transition: background 0.3s;
     }
@@ -24,12 +24,11 @@
       transition: filter 0.3s;
     }
     #status {
-      position: absolute; top: 18vh; width: 100%;
+      position: absolute; top: 20vh; width: 100%;
       background: rgba(255,255,255,0.95); text-align: center;
-      font-weight: bold; font-size: 1.1em; padding: 0px;
+      font-weight: bold; font-size: 1.1em; padding: 10px;
       z-index: 999;
     }
-
     .leaflet-control-zoom {
       bottom: 10px !important;
       right: 10px !important;
@@ -162,7 +161,7 @@ function verificarHashDentro(latlng, poligonos) {
 
         salvarPoligonos(locais);
         localStorage.setItem("lastChange", new Date().toISOString());
-        syncMessage = `Polígonos: ${locais.length} / Veio da API: ${recebidos.length}`;
+        syncMessage = `Polígonos existentes: ${locais.length} / Recebidos da API: ${recebidos.length}`;
         statusDiv.textContent = syncMessage;
         return locais;
       } catch (err) {
@@ -175,15 +174,19 @@ function verificarHashDentro(latlng, poligonos) {
     async function init() {
       const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
       const map = L.map("map", { zoomControl: false }).setView([-23.66448, -46.52791], 18);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18,
+  attribution: 'Map data © OpenStreetMap contributors',
+  errorTileUrl: 'fallback-tile.png'
+}).addTo(map);
         attribution: "© OpenStreetMap contributors"
-      }).addTo(map);
+      , errorTileUrl: 'fallback-rural.png' }).addTo(map);
 
       const areas = await atualizarPoligonosViaAPI();
 
       for (const area of areas) {
         const coords = parseWKT(area.reducedPolygon);
-	L.polygon(coords, { color: "transparent", fillOpacity: 0, opacity: 0, stroke: false }).addTo(map);
+        L.polygon(coords, { color: "blue", fillOpacity: 0.3 , errorTileUrl: 'fallback-rural.png' }).addTo(map);
       }
 
       function atualizarStatus(latlng) {
@@ -213,7 +216,7 @@ function verificarHashDentro(latlng, poligonos) {
           { enableHighAccuracy: true }
         );
       } else {
-        const marker = L.marker([-23.66448, -46.52791], { draggable: true }).addTo(map);
+        const marker = L.marker([-23.66448, -46.52791], { draggable: true , errorTileUrl: 'fallback-rural.png' }).addTo(map);
         atualizarStatus(marker.getLatLng());
         marker.on("drag", e => {
           atualizarStatus(e.target.getLatLng());
@@ -223,21 +226,5 @@ function verificarHashDentro(latlng, poligonos) {
 
     window.addEventListener("DOMContentLoaded", init);
   </script>
-<script>
-window.addEventListener('load', () => {
-  function updateOnlineStatus() {
-    const statusBox = document.getElementById('status');
-    if (!navigator.onLine) {
-      statusBox.textContent = "Você está offline - exibindo mapa padrão.";
-      statusBox.style.background = "#ffcccc";
-    } else {
-      statusBox.textContent = "Conectado - carregando mapa online.";
-      statusBox.style.background = "#d4ffd4";
-    }
-  }
-  window.addEventListener('online', updateOnlineStatus);
-  window.addEventListener('offline', updateOnlineStatus);
-  updateOnlineStatus();
-});
-</script></body>
+</body>
 </html>
