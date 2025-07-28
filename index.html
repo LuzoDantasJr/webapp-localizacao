@@ -9,8 +9,8 @@
 <meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
 <link href="https://luzodantasjr.github.io/webapp-localizacao/" rel="canonical"/>
 <link href="/webapp-localizacao/manifest.json" rel="manifest"/>
-<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport">
-<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
 <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; }
     #logo-container {
@@ -36,8 +36,6 @@
       top: auto !important;
     }
   </style>
-</link>
-</meta>
 </head>
 <body>
 <div id="logo-container">
@@ -225,5 +223,21 @@ function verificarHashDentro(latlng, poligonos) {
 
     window.addEventListener("DOMContentLoaded", init);
   </script>
-</body>
+<script>
+window.addEventListener('load', () => {
+  function updateOnlineStatus() {
+    const statusBox = document.getElementById('status');
+    if (!navigator.onLine) {
+      statusBox.textContent = "Você está offline - exibindo mapa padrão.";
+      statusBox.style.background = "#ffcccc";
+    } else {
+      statusBox.textContent = "Conectado - carregando mapa online.";
+      statusBox.style.background = "#d4ffd4";
+    }
+  }
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+  updateOnlineStatus();
+});
+</script></body>
 </html>
