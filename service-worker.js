@@ -1,11 +1,10 @@
-const CACHE_NAME = 'monitoramento-cache-v2';
+const CACHE_NAME = 'monitoramento-cache-v1';
 const urlsToCache = [
   './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  './fallback-rural.png',
-  './fallback-urbano.png'
+  './fallback-tile.png'
 ];
 
 self.addEventListener('install', event => {
@@ -16,6 +15,12 @@ self.addEventListener('install', event => {
 
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request).then(resp => resp || fetch(event.request))
+    caches.match(event.request).then(response => {
+      return response || fetch(event.request).catch(() => {
+        if (event.request.destination === 'image') {
+          return caches.match('./fallback-tile.png');
+        }
+      });
+    })
   );
 });
