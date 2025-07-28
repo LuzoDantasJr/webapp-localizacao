@@ -36,7 +36,10 @@
       top: auto !important;
     }
   </style>
-</link></meta></head><body>
+</link>
+</meta>
+</head>
+<body>
 <div id="logo-container">
 <img alt="Logo Effatha" id="logo" src="WebAPP_Logo.png"/>
 </div>
@@ -161,7 +164,7 @@ function verificarHashDentro(latlng, poligonos) {
 
         salvarPoligonos(locais);
         localStorage.setItem("lastChange", new Date().toISOString());
-        syncMessage = `Polígonos: ${locais.length} / Veio da API: ${recebidos.length}`;
+        syncMessage = `Polígonos existentes: ${locais.length} / Recebidos da API: ${recebidos.length}`;
         statusDiv.textContent = syncMessage;
         return locais;
       } catch (err) {
@@ -176,13 +179,14 @@ function verificarHashDentro(latlng, poligonos) {
       const map = L.map("map", { zoomControl: false }).setView([-23.66448, -46.52791], 18);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap contributors"
-      }).addTo(map);
+      , errorTileUrl: 'fallback-map.png' }).addTo(map);
 
       const areas = await atualizarPoligonosViaAPI();
 
       for (const area of areas) {
         const coords = parseWKT(area.reducedPolygon);
-        L.polygon(coords, { color: "blue", fillOpacity: 0.3 }).addTo(map);
+        L.polygon(area.coords, { color: 'transparent', fillOpacity: 0, opacity: 0, stroke: false }).addTo(map);
+        //L.polygon(coords, { color: "blue", fillOpacity: 0.3 , errorTileUrl: 'fallback-map.png' }).addTo(map);
       }
 
       function atualizarStatus(latlng) {
@@ -212,8 +216,7 @@ function verificarHashDentro(latlng, poligonos) {
           { enableHighAccuracy: true }
         );
       } else {
-        const marker = L.marker([-23.66448, -46.52791], { draggable: true }).addTo(map);
-map.on('moveend', () => marker.setLatLng(map.getCenter()));
+        const marker = L.marker([-23.66448, -46.52791], { draggable: true , errorTileUrl: 'fallback-rural.png' }).addTo(map);
         atualizarStatus(marker.getLatLng());
         marker.on("drag", e => {
           atualizarStatus(e.target.getLatLng());
