@@ -185,9 +185,9 @@ function verificarHashDentro(latlng, poligonos) {
       for (const area of areas) {
         const coords = parseWKT(area.reducedPolygon);
 	L.polygon(coords, { 
-		color: 'blue',        // Cor da borda do polígono
-    		fillColor: 'blue',    // Cor de preenchimento
-    		fillOpacity: 0.4      // Transparência do preenchimento (0.0 a 1.0) 
+    		color: 'blue', 
+    		fillColor: 'blue', 
+    		fillOpacity: 0.4 
 	}).addTo(map);
       }
 
