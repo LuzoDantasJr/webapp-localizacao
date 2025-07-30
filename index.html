@@ -184,7 +184,7 @@ function verificarHashDentro(latlng, poligonos) {
 
       for (const area of areas) {
         const coords = parseWKT(area.reducedPolygon);
-	L.polygon(coords, { color: "blue", fillOpacity: 0, opacity: 0, stroke: false }).addTo(map);
+	L.polygon(coords, { color: "blue", fillOpacity: 0, opacity: 0.5, stroke: false }).addTo(map);
       }
 
       function atualizarStatus(latlng) {
